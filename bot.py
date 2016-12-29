@@ -4,7 +4,7 @@ import cherrypy
 
 lucinda = telebot.TeleBot(config.token)
 
-@bot.message_handler(content_types=["text"])
+@lucinda.message_handler(content_types=["text"])
 def repeat_all_messages(message):
     lucinda.send_message(message.chat.id, message.text)
 
