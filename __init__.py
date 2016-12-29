@@ -1,5 +1,5 @@
 import cherrypy
-import ../bot
+import bot
 
 class Root(object):
     @cherrypy.expose
