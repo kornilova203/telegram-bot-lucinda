@@ -96,6 +96,7 @@ def printDict(message):
         userDict = dictionary[str(cid)]
     except:
         lucinda.send_message(cid, "Your dictionary is empty")
+        dictionary.close()
         return
     response = ""
     for entry in userDict:
