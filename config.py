@@ -1,1 +1,2 @@
-token = '321375343:AAET-7j3Pz0WJtTSrpLY60KDl0NTfChxGQI'
+token = '328988293:AAEM4PebXc1RckiHc55aQZmNiGGdeGPi5XE'
+shelveName = "dictionary2.db"
