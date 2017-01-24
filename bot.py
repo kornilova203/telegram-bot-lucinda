@@ -48,7 +48,6 @@ def addWordsCommand(message):
     lucinda.send_message(cid, "Send me words in this format:\n"
                             "english word 1 - translation 1\nenglish word 2 - translation 2")
     addUserWhoAddsWords(cid)
-    lucinda.send_message(cid, "you were added to list of users who adds words now");
 
 
 @lucinda.message_handler(func=lambda message: checkIfUserAddsWords(message.chat.id) == 1)
@@ -69,9 +68,9 @@ def addWordsToDictionary(message):
 def addWordsFromText(cid, text):
     dictionary = shelve.open(config.shelveName)
     try:  # try to get dict from shelve
-        dictionary(str(cid))
+        userDict = dictionary[str(cid)]
     except:  # if there is no dict for this user
-        dictOfWords = {}  # create new dict
+        userDict = {} # dictionary  # create new dict
     lines = text.split('\n')
     for line in lines:
         try:
@@ -82,8 +81,9 @@ def addWordsFromText(cid, text):
         if translation == "":
             dictionary.close()
             return 0
-        lucinda.send_message(cid, word + " and " + translation + "\n")
-        dictionary[str(cid)][word] = translation  # add word to dictionary
+        lucinda.send_message(cid, word + " - " + translation + "\n")
+        userDict[word] = translation
+    dictionary[str(cid)] = userDict  # add word to dictionary
     dictionary.close()
     return 1
 
@@ -92,7 +92,11 @@ def addWordsFromText(cid, text):
 def printDict(message):
     cid = message.chat.id
     dictionary = shelve.open(config.shelveName)
-    userDict = dictionary[str(cid)]
+    try:
+        userDict = dictionary[str(cid)]
+    except:
+        lucinda.send_message(cid, "Your dictionary is empty")
+        return
     response = ""
     for entry in userDict:
         response = response + entry + ' - ' + userDict[entry] + '\n'
