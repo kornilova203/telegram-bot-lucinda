@@ -1,9 +1,9 @@
 import cherrypy
 # from app import Root
-from datetime import datetime
 import bot
 
-app = cherrypy.tree.mount(bot.Root(),'/')
+app = cherrypy.tree.mount(bot.Root(), '/')
+# app = cherrypy.tree.mount(bot.ResultProcessWords(), '/result-processwords')
 
 if __name__ == '__main__':
 	# f = open('mycherry.log','a')

@@ -2,6 +2,7 @@ import config
 import telebot
 import cherrypy
 import shelve
+import requests
 
 lucinda = telebot.TeleBot(config.token)
 
@@ -54,6 +55,8 @@ def addWordsCommand(message):
 def addWordsToDictionary(message):
     cid = message.chat.id
     text = message.text
+    # text = text.replace("\n", "~")
+    requests.post("http://127.0.0.1:4242/processwords", data={'text': str(text)})
     text = text.replace(" ", "")
     text = text.lower()
     if addWordsFromText(cid, text):
@@ -71,7 +74,7 @@ def addWordsFromText(cid, text):
         userDict = dictionary[str(cid)]
     except:  # if there is no dict for this user
         userDict = {} # dictionary  # create new dict
-    lines = text.split('\n')
+    lines = text.split('~')
     for line in lines:
         try:
             word, translation = line.split('-')
@@ -124,3 +127,8 @@ class Root(object):
             return 'POST'
         else:
             return 'GET'
+
+# class ResultProcessWords():
+#     @charrypy.expose
+#     def index(self):
+#         print ("ResultProcessWords GET")
