@@ -1,58 +1,35 @@
 import config
 import telebot
-import cherrypy
 import shelve
 import requests
-# import requests
 import random
 
 
 lucinda = telebot.TeleBot(config.token)
 
+# lists for ids of users who typed /addwords /deletewords or /startlearning
+# it is necessary for understanding that
+# user's message was send after typing command
 usersWhoAddWords = []
 usersWhoDeleteWords = []
+
+# this dict is for keeping word which user is going to guess
 usersWhoLearnWords = {}
 
 
-# functions for checking if person adding words
-def addUserWhoAddsWords(uid):
-    if uid in usersWhoAddWords:
-        return
-    else:
-        usersWhoAddWords.append(uid)
+# Add user to list
+# This function is called when user type commands which
+#     requires futher message from him
+# It is necessary for understanding that
+#     user's message was send after typing command
+def addUserToList(cid, uList):
+    if cid not in uList:
+        uList.append(cid)
 
 
-def checkIfUserAddsWords(uid):
-    if uid in usersWhoAddWords:
-        return 1
-    else:
-        return 0
-
-
-def deleteUserWhoAddsWords(uid):
-    usersWhoAddWords.remove(uid)
-
-
-# check if person is deleting words
-def addUserWhoDeletesWords(uid):
-    if uid in usersWhoDeleteWords:
-        return
-    else:
-        usersWhoDeleteWords.append(uid)
-
-
-def checkIfUserDeletesWords(uid):
-    if uid in usersWhoDeleteWords:
-        return 1
-    else:
-        return 0
-
-
-def deleteUserWhoDeletesWords(uid):
-    usersWhoDeleteWords.remove(uid)
-
-
-# check if person is learning words
+# Add user to list of people who learns words
+# key of list is user id
+# value of list is word which user is going to guess
 def addUserWhoLearnsWords(uid):
     if uid in usersWhoLearnWords:
         return
@@ -60,124 +37,82 @@ def addUserWhoLearnsWords(uid):
         usersWhoLearnWords[uid] = ""
 
 
-def checkIfUserLearnsWords(uid):
-    if uid in usersWhoLearnWords:
-        return 1
-    else:
-        return 0
+# responses for commands
+commands = {
+    "start": "Hello! I will help you to learn english words. "
+             "Type /help to see what I can do",
+    "help": "To start learning you should "
+            "add words to your dictionary by typing /addwords.\n"
+            "To see your dictionary type /printdict "
+            "(there you can delete words).\n"
+            "If you want to start learning, type /startlearning. "
+            "I will give you words in english and "
+            "you should type their translation.",
+    "addwords": "Send me words in this format:\n"
+                "english word 1 - translation 1\n"
+                "english word 2 - translation 2\n"
+                "To stop command type /stop",
+    "deletewords": "Send me words, which you want to "
+                   "delete, in this format:\nenglish word 1, "
+                   "english word 2, english word 3\n"
+                   "To stop command type /stop",
+    "startlearning": "I will send you word, you should type translation\n"
+                     "To stop command type /stop"
+}
 
 
-def deleteUserWhoLearnsWords(uid):
-    usersWhoLearnWords.pop(uid)
-
-
+# function for command /start
 @lucinda.message_handler(commands=['start'])
 def startCommand(message):
-    lucinda.send_message(message.chat.id, "Hello! I will help you to learn "
-                        "english words. "
-                        "Type /help to see what I can do")
+    lucinda.send_message(message.chat.id, commands["start"])
 
 
+# function for command /help
 @lucinda.message_handler(commands=['help'])
 def helpCommand(message):
-    lucinda.send_message(message.chat.id, "To start learning you should "
-                        "add words to your dictionary by typing /addwords.\n"
-                        "To see your dictionary type /printdict "
-                        "(there you can delete words).\n"
-                        "If you want to start learning, type /startlearning. "
-                        "I will give you words in english and you should type their translation.")
+    lucinda.send_message(message.chat.id, commands["help"])
 
 
+# function for command /stop
+# first understand what command is going to be stopped
+# then delete person from list
+# and send message
 @lucinda.message_handler(commands=['stop'])
 def stopCommand(message):
     cid = message.chat.id
-    # lucinda.send_message(cid, "stop")
-    if checkIfUserLearnsWords(cid) == 1:
-        deleteUserWhoLearnsWords(cid)
+    if cid in usersWhoLearnWords:
+        usersWhoLearnWords.pop(cid)
         lucinda.send_message(cid, "Learning was stopped")
-    if checkIfUserAddsWords(cid) == 1:
-        deleteUserWhoAddsWords(cid)
+    if cid in usersWhoAddWords:
+        usersWhoAddWords.remove(cid)
         lucinda.send_message(cid, "Adding words was stopped")
-    if checkIfUserDeletesWords(cid) == 1:
-        deleteUserWhoDeletesWords(cid)
+    if cid in usersWhoDeleteWords:
+        usersWhoDeleteWords.remove(cid)
         lucinda.send_message(cid, "Deleting words was stopped")
 
 
+# function for command /addwords
 @lucinda.message_handler(commands=["addwords"])
 def addWordsCommand(message):
     cid = message.chat.id
-    lucinda.send_message(cid, "Send me words in this format:\n"
-                            "english word 1 - translation 1\nenglish word 2 - translation 2\n"
-                            "To stop command type /stop")
-    addUserWhoAddsWords(cid)
+    lucinda.send_message(cid, commands["addwords"])
+    addUserToList(cid, usersWhoAddWords)
 
 
-@lucinda.message_handler(commands=["deletewords"])
-def deleteWordsCommand(message):
-    cid = message.chat.id
-    dictionary = shelve.open(config.dictName)
-    if ifDictIsEmpty(cid, dictionary) == 1:  # if dict is empty
-        lucinda.send_message(cid, "Your dictionary is empty ")
-        dictionary.close()
-        return
-    dictionary.close()
-    lucinda.send_message(cid, "Send me words, which you want to delete, in this format:\n"
-                            "english word 1, english word 2, english word 3\n"
-                            "To stop command type /stop")
-    addUserWhoDeletesWords(cid)
-
-
-@lucinda.message_handler(commands=["startlearning"])
-def startlearningCommand(message):
-    cid = message.chat.id
-    dictionary = shelve.open(config.dictName)
-    if ifDictIsEmpty(cid, dictionary) == 1:  # if dict is empty
-        lucinda.send_message(cid, "Your dictionary is empty ")
-        dictionary.close()
-        return
-    dictionary.close()
-    lucinda.send_message(cid, "I will send you word, you should type translation\n"
-                            "To stop command type /stop")
-    addUserWhoLearnsWords(cid)
-    sendWord(cid)
-
-
-# send english word for user
-# there is at least one word in dict
-def sendWord(cid):
-    dictionary = shelve.open(config.dictName)
-    userDict = dictionary[str(cid)]
-    # length = len(userDict.keys())
-    word = random.choice(list(userDict.keys()))
-    translation = userDict[word]
-    if len(userDict.keys()) != 1:
-        while translation == usersWhoLearnWords[cid]:
-            word = random.choice(list(userDict.keys()))
-            translation = userDict[word]
-    usersWhoLearnWords[cid] = translation
-    example = getExample(word)
-    if example:
-        lucinda.send_message(cid, example + "\nTranslate word \"" + word + "\" in this sentence.")
-    else:
-        lucinda.send_message(cid, word)
-    dictionary.close()
-
-
-@lucinda.message_handler(func=lambda message: checkIfUserAddsWords(message.chat.id) == 1)
+# Add words from message to user's dict
+@lucinda.message_handler(func=lambda message: message.chat.id in usersWhoAddWords)
 def addWordsToDictionary(message):
     cid = message.chat.id
-    deleteUserWhoAddsWords(cid)
+    usersWhoAddWords.remove(cid)
     text = message.text
-    # text = text.replace("\n", "~")
-    # requests.post("http://127.0.0.1:4242/processwords", data={'text': str(text)})
     text = text.replace(" ", "")
     text = text.lower()
     if addWordsFromText(cid, text):
         lucinda.send_message(cid, "success!")
     else:
         lucinda.send_message(cid, "Sorry, I cant understand your message. "
-                            "Don't forget to put\'-\' betweent word and "
-                            "translation. Please try again /addwords")
+                             "Don't forget to put\'-\' between word and "
+                             "translation. Please try again /addwords")
 
 
 # Add words from text message
@@ -187,7 +122,7 @@ def addWordsFromText(cid, text):
     try:  # try to get dict from shelve
         userDict = dictionary[str(cid)]
     except:  # if there is no dict for this user
-        userDict = {} # dictionary  # create new dict
+        userDict = {}  # create new user dict
     lines = text.split('\n')
     for line in lines:
         try:
@@ -220,16 +155,60 @@ def addExamples(word):
         try:
             examples[word]
         except:  # if there is no entry for this word
-            response = requests.get("https://twinword-word-graph-dictionary.p.mashape.com/example/?entry=" + word,
-                                headers=config.headers)
-            if response.status_code == 200 and response.json()['result_msg'] != 'Entry word not found':
+            response = requests.get("https://twinword-word-graph-dictionary.p.mashape.com/example/?entry=" +
+                                    word, headers=config.headers)
+            if (response.status_code == 200 and
+                    response.json()['result_msg'] != 'Entry word not found'):
                 examples[word] = response.json()["example"]
             else:
                 examples[word] = "No examples"
 
 
+# function for command /deletewords
+@lucinda.message_handler(commands=["deletewords"])
+def deleteWordsCommand(message):
+    cid = message.chat.id
+    with shelve.open(config.dictName) as dictionary:  # open shelve
+        if ifDictIsEmpty(cid, dictionary):
+            lucinda.send_message(cid, "Your dictionary is empty ")
+            return
+        lucinda.send_message(cid, commands["deletewords"])
+        addUserToList(cid, usersWhoDeleteWords)
+
+
+# function for command /startlearning
+@lucinda.message_handler(commands=["startlearning"])
+def startlearningCommand(message):
+    cid = message.chat.id
+    with shelve.open(config.dictName) as dictionary:  # open shelve
+        if ifDictIsEmpty(cid, dictionary):
+            lucinda.send_message(cid, "Your dictionary is empty. /addwords first")
+            return
+        lucinda.send_message(cid, commands["startlearning"])
+        addUserWhoLearnsWords(cid)
+        sendWord(cid)  # send english word to user
+
+
+# send sentence with english word to user
+def sendWord(cid):
+    with shelve.open(config.dictName) as dictionary:  # open shelve
+        userDict = dictionary[str(cid)]
+        word = random.choice(list(userDict.keys()))
+        if len(userDict.keys()) != 1:
+            while userDict[word] == usersWhoLearnWords[cid]:  # do not send one word twice
+                word = random.choice(list(userDict.keys()))
+        usersWhoLearnWords[cid] = userDict[word]  # remember translation of word
+        example = getExample(word)  # try to get sentence with word
+        if example:
+            lucinda.send_message(cid, example + "\nTranslate word \"" + word +
+                                 "\" in this sentence.")
+        else:
+            lucinda.send_message(cid, word)
+
+
+# get sentence with word
 def getExample(word):
-    with shelve.open(config.examplesDictName) as examples:
+    with shelve.open(config.examplesDictName) as examples:  # open shelve with examples
         try:
             exampleList = examples[word]
         except:
@@ -240,96 +219,79 @@ def getExample(word):
             example = random.choice(exampleList)
             return example
 
-@lucinda.message_handler(func=lambda message: checkIfUserDeletesWords(message.chat.id) == 1)
+
+# delete words which user send in message
+@lucinda.message_handler(func=lambda message: message.chat.id in usersWhoDeleteWords)
 def deleteWordsFromDictionary(message):
     cid = message.chat.id
-    deleteUserWhoDeletesWords(cid)
+    usersWhoDeleteWords.remove(cid)
     text = message.text
-    text = text.replace(" ", "")
+    text = text.replace(" ", "")  # remove spaces
     text = text.lower()
     deleteWordsFromText(cid, text)
 
 
-@lucinda.message_handler(func=lambda message: checkIfUserLearnsWords(message.chat.id) == 1)
+# delete words which user send in message
+def deleteWordsFromText(cid, text):
+    with shelve.open(config.dictName) as dictionary:  # open shelve
+        userDict = dictionary[str(cid)]  # garanteed that it is not empty
+        words = text.split(',')  # split text into separate words
+        for word in words:
+            try:
+                userDict[word]  # check if word is in dict
+                userDict.pop(word)
+                lucinda.send_message(cid, "Word \"" + word + "\" was deleted")
+            except:
+                lucinda.send_message(cid, "There is no word \"" + word +
+                                     "\" in your dictionary")
+        dictionary[str(cid)] = userDict  # add new user dict to dictionary
+
+
+# Check user's answer
+@lucinda.message_handler(func=lambda message: message.chat.id in usersWhoLearnWords)
 def checkWord(message):
     cid = message.chat.id
-    # deleteUserWhoDeletesWords(cid)
     text = message.text
     text = text.replace(" ", "")
     text = text.lower()
-    if text == usersWhoLearnWords[cid]:
+    if text == usersWhoLearnWords[cid]:  # if user's answer is correnct
         lucinda.send_message(cid, "Right!")
     else:
-        lucinda.send_message(cid, "No. It is " + usersWhoLearnWords[cid] +
-                                "\nTo stop type /stop")
-    sendWord(cid)
+        lucinda.send_message(cid, "No. It is \"" + usersWhoLearnWords[cid] +
+                             "\"\nTo stop type /stop")
+    sendWord(cid)  # send new word to user
 
 
-def deleteWordsFromText(cid, text):
-    dictionary = shelve.open(config.dictName)
-    userDict = dictionary[str(cid)]  # garanteed that it is not empty
-    words = text.split(',')
-    for word in words:
-        try:
-            userDict[word]  # check if word is in dict
-            userDict.pop(word)
-            lucinda.send_message(cid, "Word \"" + word + "\" was deleted")
-        except:
-            lucinda.send_message(cid, "There is no word \"" + word + "\" in your dictionary")
-    dictionary[str(cid)] = userDict  # add new user dict to dictionary
-    dictionary.close()
-
-
+# Function for command /printdict
 @lucinda.message_handler(commands=['printdict'])
 def printDict(message):
     cid = message.chat.id
-    dictionary = shelve.open(config.dictName)
-    if ifDictIsEmpty(cid, dictionary) == 1:  # if dict is empty
-        lucinda.send_message(cid, "Your dictionary is empty")
-        dictionary.close()
-        return
-    userDict = dictionary[str(cid)]
-    response = ""
-    for entry in userDict:
-        response = response + entry + ' - ' + userDict[entry] + '\n'
-    dictionary.close()
-    if response == "":
-        lucinda.send_message(cid, "Your dictionary is empty")
-        return
-    lucinda.send_message(cid, response)
+    with shelve.open(config.dictName) as dictionary:  # open shelve
+        if ifDictIsEmpty(cid, dictionary):  # if dict is empty
+            lucinda.send_message(cid, "Your dictionary is empty")
+            return
+        userDict = dictionary[str(cid)]
+        response = ""
+        for entry in userDict:  # add all words to response
+            response = response + entry + ' - ' + userDict[entry] + '\n'
+        lucinda.send_message(cid, response)
 
 
 @lucinda.message_handler(content_types=["text"])
 def textMessages(message):
-    lucinda.send_message(message.chat.id, "Sorry, I cannot understand what you said. "
-                            "Type /help to see what I can do")
+    lucinda.send_message(message.chat.id, "Sorry, I cannot understand what "
+                         "you said. Type /help to see what I can do")
 
 
 def ifDictIsEmpty(cid, dictionary):
     try:
         userDict = dictionary[str(cid)]
     except:
-        return 1
+        return True
     if len(userDict.keys()) == 0:
-        return 1
+        return True
     else:
-        return 0
+        return False
 
-class Root(object):
-    @cherrypy.expose
-    def index(self):
-        if 'content-length' in cherrypy.request.headers and \
-                        'content-type' in cherrypy.request.headers and \
-                        cherrypy.request.headers['content-type'] == 'application/json':
-            length = int(cherrypy.request.headers['content-length'])
-            json_string = cherrypy.request.body.read(length).decode("utf-8")
-            update = telebot.types.Update.de_json(json_string)
-            lucinda.process_new_updates([update])
-            return 'POST'
-        else:
-            return 'GET'
 
-# class ResultProcessWords():
-#     @charrypy.expose
-#     def index(self):
-#         print ("ResultProcessWords GET")
+lucinda.polling(none_stop=True)
