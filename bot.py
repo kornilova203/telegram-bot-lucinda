@@ -2,6 +2,7 @@ import config
 import telebot
 import cherrypy
 import shelve
+import requests
 # import requests
 import random
 
@@ -114,7 +115,7 @@ def addWordsCommand(message):
 @lucinda.message_handler(commands=["deletewords"])
 def deleteWordsCommand(message):
     cid = message.chat.id
-    dictionary = shelve.open(config.shelveName)
+    dictionary = shelve.open(config.dictName)
     if ifDictIsEmpty(cid, dictionary) == 1:  # if dict is empty
         lucinda.send_message(cid, "Your dictionary is empty ")
         dictionary.close()
@@ -129,7 +130,7 @@ def deleteWordsCommand(message):
 @lucinda.message_handler(commands=["startlearning"])
 def startlearningCommand(message):
     cid = message.chat.id
-    dictionary = shelve.open(config.shelveName)
+    dictionary = shelve.open(config.dictName)
     if ifDictIsEmpty(cid, dictionary) == 1:  # if dict is empty
         lucinda.send_message(cid, "Your dictionary is empty ")
         dictionary.close()
@@ -144,17 +145,21 @@ def startlearningCommand(message):
 # send english word for user
 # there is at least one word in dict
 def sendWord(cid):
-    dictionary = shelve.open(config.shelveName)
+    dictionary = shelve.open(config.dictName)
     userDict = dictionary[str(cid)]
     # length = len(userDict.keys())
-    translation = random.choice(list(userDict.keys()))
-    word = userDict[translation]
+    word = random.choice(list(userDict.keys()))
+    translation = userDict[word]
     if len(userDict.keys()) != 1:
-        while word == usersWhoLearnWords[cid]:
-            translation = random.choice(list(userDict.keys()))
-            word = userDict[translation]
+        while translation == usersWhoLearnWords[cid]:
+            word = random.choice(list(userDict.keys()))
+            translation = userDict[word]
     usersWhoLearnWords[cid] = translation
-    lucinda.send_message(cid, word)
+    example = getExample(word)
+    if example:
+        lucinda.send_message(cid, example + "\nTranslate word \"" + word + "\" in this sentence.")
+    else:
+        lucinda.send_message(cid, word)
     dictionary.close()
 
 
@@ -178,7 +183,7 @@ def addWordsToDictionary(message):
 # Add words from text message
 # Input parameters:
 def addWordsFromText(cid, text):
-    dictionary = shelve.open(config.shelveName)
+    dictionary = shelve.open(config.dictName)
     try:  # try to get dict from shelve
         userDict = dictionary[str(cid)]
     except:  # if there is no dict for this user
@@ -195,10 +200,45 @@ def addWordsFromText(cid, text):
             return 0
         lucinda.send_message(cid, word + " - " + translation + "\n")
         userDict[word] = translation
+        addExamples(word)
     dictionary[str(cid)] = userDict  # add word to dictionary
     dictionary.close()
     return 1
 
+
+# add examples of word to "examples" shelve
+# if there is no examples, add "no examples"
+# 1. try to get entry from "examples"
+# 2. if there is no such entry
+#   make request
+#   if response is correct and has examples
+#       add examples to shelve
+#   else
+#       add "no examples"
+def addExamples(word):
+    with shelve.open(config.examplesDictName) as examples:
+        try:
+            examples[word]
+        except:  # if there is no entry for this word
+            response = requests.get("https://twinword-word-graph-dictionary.p.mashape.com/example/?entry=" + word,
+                                headers=config.headers)
+            if response.status_code == 200 and response.json()['result_msg'] != 'Entry word not found':
+                examples[word] = response.json()["example"]
+            else:
+                examples[word] = "No examples"
+
+
+def getExample(word):
+    with shelve.open(config.examplesDictName) as examples:
+        try:
+            exampleList = examples[word]
+        except:
+            return False
+        if exampleList == "No examples":
+            return False
+        else:
+            example = random.choice(exampleList)
+            return example
 
 @lucinda.message_handler(func=lambda message: checkIfUserDeletesWords(message.chat.id) == 1)
 def deleteWordsFromDictionary(message):
@@ -226,7 +266,7 @@ def checkWord(message):
 
 
 def deleteWordsFromText(cid, text):
-    dictionary = shelve.open(config.shelveName)
+    dictionary = shelve.open(config.dictName)
     userDict = dictionary[str(cid)]  # garanteed that it is not empty
     words = text.split(',')
     for word in words:
@@ -243,7 +283,7 @@ def deleteWordsFromText(cid, text):
 @lucinda.message_handler(commands=['printdict'])
 def printDict(message):
     cid = message.chat.id
-    dictionary = shelve.open(config.shelveName)
+    dictionary = shelve.open(config.dictName)
     if ifDictIsEmpty(cid, dictionary) == 1:  # if dict is empty
         lucinda.send_message(cid, "Your dictionary is empty")
         dictionary.close()
