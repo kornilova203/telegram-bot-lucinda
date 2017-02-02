@@ -14,5 +14,6 @@
 * `/printdict` - посмотреть свой словарь
 * `/startlearning` - начать учить слова
 * `/stop` - прервать текущую команду
+
 ## Как он работает
 Бот написан на Python с использованием библиотеки [pyTelegramBotAPI](https://github.com/eternnoir/pyTelegramBotAPI).
