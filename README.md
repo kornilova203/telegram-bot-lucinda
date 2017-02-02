@@ -29,8 +29,11 @@
 
 1. Бот проверяет, есть ли уже примеры со словом evidence в его базе примеров
 2. Если примеров не обнаруживается, то он делает запрос к twinword с этим словом и получает ответ в формате json
-3. Если запрос был корректный и в twinword есть примеры с этим словом, то бот записывает в базу примеров полученный список с предложениями, в которых есть слово evidence. Пример такого списка:
-`['The evidence belies your statement.', 
-"The evidence invalidates the man's statement.", 
-'Was there evidence in the record that the victim was promiscuous ', 
-"The bulk of the evidence for the arrest warrant was Lawrence's statement."]`
+3. Если запрос был корректный и в twinword есть примеры с этим словом, то бот записывает в базу примеров полученный список с предложениями, в которых есть слово evidence. 
+
+  Пример такого списка:
+  
+  `['The evidence belies your statement.', 
+  "The evidence invalidates the man's statement.", 
+  'Was there evidence in the record that the victim was promiscuous ', 
+  "The bulk of the evidence for the arrest warrant was Lawrence's statement."]`
