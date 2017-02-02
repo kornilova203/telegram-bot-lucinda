@@ -1,11 +1,14 @@
-# Lucinda *(telegram bot)*
-This bot will help you to learn english words.
-## Add Lucinda in telegram
-Bot is not finished yet.
-## Commands
-* `/start` - description of bot
-* `/help` - what this bot can do
-* `/addWord` - add word to you dictionary.
-* `/printDict` - print dictionary
-* `/startLearning` - bot will give you sentences with words from your dictionary. You should write translation for highlighted word
-* `/stopLearning` - stop process of learning
+# Lucinda — телеграм бот для изучения английских слов
+@englishVocabularyLucindaBot
+## Идея
+Этот телеграм бот поможет запомнить новые английские слова. 
+Часто возникает проблема, что выученные слова быстро забываются. Поэтому вместо того, чтобы просто спрашивать у пользователся перевод английского слова, Lucinda присылает предложение с его использованием. 
+Таким образом пользователь видит слово в контексте и ему проще его запомнить, проассоциировать с другими словами, понять особенности его использования. В дальнейшем, когда пользователь встретит выученное слово, ему будет легче его вспомнить.  
+## Команды
+* `/start` - описание бота
+* `/help` - что умеет бот
+* `/addwords` - добавить слова в свой словарь
+* `/deletewords` - удалить слова из своего словаря
+* `/printdict` - посмотреть свой словарь
+* `/startlearning` - начать учить слова
+* `/stop` - прервать текущую команду
