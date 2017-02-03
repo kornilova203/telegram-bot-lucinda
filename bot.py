@@ -105,7 +105,7 @@ def addWordsToDictionary(message):
     cid = message.chat.id
     usersWhoAddWords.remove(cid)
     text = message.text
-    text = text.replace(" ", "")
+    # text = text.replace(" ", "")
     text = text.lower()
     if addWordsFromText(cid, text):
         lucinda.send_message(cid, "success!")
@@ -118,27 +118,26 @@ def addWordsToDictionary(message):
 # Add words from text message
 # Input parameters:
 def addWordsFromText(cid, text):
-    dictionary = shelve.open(config.dictName)
-    try:  # try to get dict from shelve
-        userDict = dictionary[str(cid)]
-    except:  # if there is no dict for this user
-        userDict = {}  # create new user dict
-    lines = text.split('\n')
-    for line in lines:
-        try:
-            word, translation = line.split('-')
-        except:
-            dictionary.close()
-            return 0
-        if translation == "":
-            dictionary.close()
-            return 0
-        lucinda.send_message(cid, word + " - " + translation + "\n")
-        userDict[word] = translation
-        addExamples(word)
-    dictionary[str(cid)] = userDict  # add word to dictionary
-    dictionary.close()
-    return 1
+    with shelve.open(config.dictName) as dictionary:  # open shelve
+        try:  # try to get dict from shelve
+            userDict = dictionary[str(cid)]
+        except:  # if there is no dict for this user
+            userDict = {}  # create new user dict
+        lines = text.split('\n')
+        for line in lines:
+            try:
+                word, translation = line.split('-')
+            except:
+                return False
+            if translation == "":
+                return False
+            translation = translation.strip()  # delete spaces from begining and end
+            word = word.strip()  # delete spaces from begining and end
+            lucinda.send_message(cid, word + " - " + translation + "\n")
+            userDict[word] = translation
+            addExamples(word)
+        dictionary[str(cid)] = userDict  # add word to dictionary
+    return True
 
 
 # add examples of word to "examples" shelve
@@ -174,6 +173,34 @@ def deleteWordsCommand(message):
             return
         lucinda.send_message(cid, commands["deletewords"])
         addUserToList(cid, usersWhoDeleteWords)
+
+
+# delete words which user send in message
+@lucinda.message_handler(func=lambda message: message.chat.id in usersWhoDeleteWords)
+def deleteWordsFromDictionary(message):
+    cid = message.chat.id
+    usersWhoDeleteWords.remove(cid)
+    text = message.text
+    # text = text.replace(" ", "")  # remove spaces
+    text = text.lower()
+    deleteWordsFromText(cid, text)
+
+
+# delete words which user send in message
+def deleteWordsFromText(cid, text):
+    with shelve.open(config.dictName) as dictionary:  # open shelve
+        userDict = dictionary[str(cid)]  # garanteed that it is not empty
+        words = text.split(',')  # split text into separate words
+        for word in words:
+            word = word.strip()
+            try:
+                userDict[word]  # check if word is in dict
+                userDict.pop(word)
+                lucinda.send_message(cid, "Word \"" + word + "\" was deleted")
+            except:
+                lucinda.send_message(cid, "There is no word \"" + word +
+                                     "\" in your dictionary")
+        dictionary[str(cid)] = userDict  # add new user dict to dictionary
 
 
 # function for command /startlearning
@@ -220,39 +247,12 @@ def getExample(word):
             return example
 
 
-# delete words which user send in message
-@lucinda.message_handler(func=lambda message: message.chat.id in usersWhoDeleteWords)
-def deleteWordsFromDictionary(message):
-    cid = message.chat.id
-    usersWhoDeleteWords.remove(cid)
-    text = message.text
-    text = text.replace(" ", "")  # remove spaces
-    text = text.lower()
-    deleteWordsFromText(cid, text)
-
-
-# delete words which user send in message
-def deleteWordsFromText(cid, text):
-    with shelve.open(config.dictName) as dictionary:  # open shelve
-        userDict = dictionary[str(cid)]  # garanteed that it is not empty
-        words = text.split(',')  # split text into separate words
-        for word in words:
-            try:
-                userDict[word]  # check if word is in dict
-                userDict.pop(word)
-                lucinda.send_message(cid, "Word \"" + word + "\" was deleted")
-            except:
-                lucinda.send_message(cid, "There is no word \"" + word +
-                                     "\" in your dictionary")
-        dictionary[str(cid)] = userDict  # add new user dict to dictionary
-
-
 # Check user's answer
 @lucinda.message_handler(func=lambda message: message.chat.id in usersWhoLearnWords)
 def checkWord(message):
     cid = message.chat.id
     text = message.text
-    text = text.replace(" ", "")
+    text = text.strip()
     text = text.lower()
     if text == usersWhoLearnWords[cid]:  # if user's answer is correnct
         lucinda.send_message(cid, "Right!")
