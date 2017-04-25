@@ -1,5 +1,8 @@
 # Lucinda — telegram bot for learning new words
 @englishVocabularyLucindaBot
+
+[Описание на русском](https://github.com/kornilova-l/telegram-bot-lucinda#Идея)
+
 ## Idea
 This bot will help to learn new English words.
 
